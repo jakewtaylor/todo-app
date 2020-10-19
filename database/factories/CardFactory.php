@@ -25,7 +25,7 @@ class CardFactory extends Factory
         return [
             'column_id' => Column::factory(),
             'title' => $this->faker->sentence(4),
-            'body' => implode('\n\n', $this->faker->paragraphs(2)),
+            'body' => implode("\n\n", $this->faker->paragraphs(2)),
         ];
     }
 }
