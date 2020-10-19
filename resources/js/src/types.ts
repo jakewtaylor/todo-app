@@ -22,10 +22,10 @@ export type Card = {
   column_id: number;
 };
 
+export type FullColumn = Column & {
+  cards: Card[];
+};
+
 export type FullBoard = Board & {
-  columns: Array<
-    Column & {
-      cards: Card[];
-    }
-  >;
+  columns: FullColumn[];
 };

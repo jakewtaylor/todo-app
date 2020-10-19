@@ -18,7 +18,7 @@ class TodoSeeder extends Seeder
     {
         Board::factory()->has(
             Column::factory()->has(
-                Card::factory()->count(6)
+                Card::factory()->count(3)
             )->count(4)
         )->count(2)->create();
     }

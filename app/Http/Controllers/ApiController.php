@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CreateCardRequest;
 use App\Models\Board;
+use App\Models\Column;
 
 class ApiController extends Controller
 {
@@ -20,5 +22,12 @@ class ApiController extends Controller
                 $q->with('cards');
             },
         ]);
+    }
+
+    public function storeCard(CreateCardRequest $request, Column $column)
+    {
+        $card = $column->cards()->create($request->only('title', 'body'));
+
+        return $card;
     }
 }

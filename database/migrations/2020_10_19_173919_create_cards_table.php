@@ -18,7 +18,7 @@ class CreateCardsTable extends Migration
             $table->timestamps();
             $table->foreignId('column_id')->constrained();
             $table->string('title');
-            $table->text('body');
+            $table->text('body')->nullable();
         });
     }
 

@@ -27,7 +27,7 @@ export const Boards: React.FC = () => {
         <button
           key={board.id}
           onClick={() => handleBoardClick(board)}
-          className={`block p-2 rounded-sm hover:bg-indigo-600 ${
+          className={`block p-2 w-full text-center rounded-sm hover:bg-indigo-600 ${
             board.id === selectedBoard ? 'bg-indigo-600' : ''
           } ${i !== 0 ? 'mt-1' : ''}`}
         >
