@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { StoreState } from '../../store/store';
+import { Card } from './Card';
 import { CreateCard } from './CreateCard';
 
 type Props = {
@@ -9,25 +10,15 @@ type Props = {
 
 export const Cards: React.FC<Props> = ({ columnId }) => {
   const cards = useSelector((state: StoreState) =>
-    state.cards.cards.filter(card => card.column_id === columnId),
+    state.cards.cards
+      .filter(card => card.column_id === columnId)
+      .sort((a, b) => a.updated_at.localeCompare(b.updated_at)),
   );
 
   return (
     <div className="w-full flex flex-col">
-      {cards.map(({ id, title, body, persisted }) => (
-        <div
-          key={id}
-          className={`bg-white shadow p-3 rounded mb-4 ${
-            persisted ? '' : 'opacity-75 cursor-wait'
-          }`}
-        >
-          <p className="font-bold leading-none text-gray-800">{title}</p>
-          {body ? (
-            <p className="text-gray-800 truncate-4-lines leading-tight mt-2">
-              {body}
-            </p>
-          ) : null}
-        </div>
+      {cards.map(card => (
+        <Card key={card.id} card={card} />
       ))}
 
       <CreateCard columnId={columnId} />

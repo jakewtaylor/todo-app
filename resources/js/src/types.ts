@@ -29,3 +29,7 @@ export type FullColumn = Column & {
 export type FullBoard = Board & {
   columns: FullColumn[];
 };
+
+export enum DragItem {
+  Card = 'card',
+}

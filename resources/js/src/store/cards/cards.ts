@@ -1,11 +1,17 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { formatISO } from 'date-fns';
 import { v4 as uuid } from 'uuid';
 import { Card, FullColumn } from '../../types';
-import { get, post } from '../../utils/http';
+import { get, patch, post } from '../../utils/http';
 import { AppThunk } from '../store';
 
+export type StoreCard = Omit<Card, 'id'> & {
+  id: string | number;
+  persisted: boolean;
+};
+
 type CardsState = {
-  cards: (Omit<Card, 'id'> & { id: string | number; persisted: boolean })[];
+  cards: StoreCard[];
 };
 
 const initialState: CardsState = { cards: [] };
@@ -19,6 +25,34 @@ export const cardsSlice = createSlice({
         ...state.cards,
         ...action.payload.map(card => ({ ...card, persisted: true })),
       ];
+    },
+
+    updateCard(
+      state,
+      action: PayloadAction<{
+        cardId: string | number;
+        updates: {
+          id?: number;
+          title?: string;
+          body?: string;
+          columnId?: number;
+          persisted?: boolean;
+        };
+      }>,
+    ) {
+      const { cardId, updates } = action.payload;
+      const cardIndex = state.cards.findIndex(c => c.id === cardId);
+
+      const card = state.cards[cardIndex];
+      state.cards[cardIndex] = {
+        ...card,
+        id: updates.id ?? card.id,
+        title: updates.title ?? card.title,
+        body: updates.body ?? card.body,
+        column_id: updates.columnId ?? card.column_id,
+        persisted: updates.persisted ?? card.persisted,
+        updated_at: formatISO(new Date()),
+      };
     },
 
     createCard(
@@ -39,14 +73,14 @@ export const cardsSlice = createSlice({
           column_id: columnId,
           title,
           body,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: formatISO(new Date()),
+          updated_at: formatISO(new Date()),
           persisted: false,
         },
       ];
     },
 
-    cardCreateFailed(state, action: PayloadAction<string>) {
+    removeCard(state, action: PayloadAction<string>) {
       state.cards = state.cards.filter(c => c.id !== action.payload);
     },
 
@@ -60,14 +94,36 @@ export const cardsSlice = createSlice({
         persisted: true,
       };
     },
+
+    liveCardUpdate(state, action: PayloadAction<Card>) {
+      const cardIndex = state.cards.findIndex(c => c.id === action.payload.id);
+
+      state.cards[cardIndex] = {
+        ...state.cards[cardIndex],
+        ...action.payload,
+      };
+    },
+
+    liveCardCreate(state, action: PayloadAction<Card>) {
+      const existingCard = state.cards.find(
+        card => card.id === action.payload.id,
+      );
+
+      if (existingCard) return;
+
+      state.cards.push({ ...action.payload, persisted: true });
+    },
   },
 });
 
 export const {
   addCards,
   createCard,
-  cardCreateFailed,
+  removeCard,
   persistedCard,
+  updateCard,
+  liveCardUpdate,
+  liveCardCreate,
 } = cardsSlice.actions;
 
 export const makeCard = (
@@ -84,10 +140,46 @@ export const makeCard = (
       body,
     });
 
-    dispatch(persistedCard({ id, card: res }));
+    dispatch(
+      updateCard({
+        cardId: id,
+        updates: { ...res, persisted: true },
+      }),
+    );
   } catch (e) {
-    dispatch(cardCreateFailed(id));
+    dispatch(removeCard(id));
 
     throw new Error('Failed to create card.');
+  }
+};
+
+export const moveCard = (
+  card: StoreCard,
+  toColumn: number,
+): AppThunk => async dispatch => {
+  dispatch(
+    updateCard({
+      cardId: card.id,
+      updates: { columnId: toColumn, persisted: false },
+    }),
+  );
+
+  try {
+    const res = await patch<Card>(`/api/cards/${card.id}`, {
+      column_id: toColumn,
+    });
+
+    dispatch(
+      updateCard({ cardId: card.id, updates: { ...res, persisted: true } }),
+    );
+  } catch (e) {
+    dispatch(
+      updateCard({
+        cardId: card.id,
+        updates: { columnId: card.column_id, persisted: true },
+      }),
+    );
+
+    throw new Error('Failed to move card.');
   }
 };

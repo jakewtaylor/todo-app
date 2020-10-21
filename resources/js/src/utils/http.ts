@@ -23,3 +23,22 @@ export const post = async <R, D = unknown>(url: string, data: D) => {
 
   return res as R;
 };
+
+export const patch = async <R, D = unknown>(url: string, data: D) => {
+  const req = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (req.status < 200 || req.status >= 300) {
+    throw new Error('Unsuccessful request');
+  }
+
+  const res = await req.json();
+
+  return res as R;
+};

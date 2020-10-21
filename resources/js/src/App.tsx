@@ -1,18 +1,26 @@
 import React from 'react';
+import { Store } from 'redux';
 import { Provider } from 'react-redux';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Board } from './components/Board/Board';
 import { Boards } from './components/Boards/Boards';
-import { Columns } from './components/Columns/Columns';
-import { store } from './store/store';
+import { StoreState } from './store/store';
 
-export const App: React.FC = () => {
+type Props = {
+  store: Store<StoreState>;
+};
+
+export const App: React.FC<Props> = ({ store }) => {
   return (
     <Provider store={store}>
-      <div className="h-full flex flex-row">
-        <Boards />
+      <DndProvider backend={HTML5Backend}>
+        <div className="h-full flex flex-row">
+          <Boards />
 
-        <Board />
-      </div>
+          <Board />
+        </div>
+      </DndProvider>
     </Provider>
   );
 };

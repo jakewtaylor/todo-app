@@ -1,21 +1,15 @@
 import React from 'react';
-import { Column } from '../../types';
-import { Cards } from '../Cards/Cards';
+import { Column as IColumn } from '../../types';
+import { Column } from './Column';
 
 type Props = {
-  columns: Column[];
+  columns: IColumn[];
 };
 
-export const Columns: React.FC<Props> = ({ columns }) => {
-  return (
-    <div className="flex-1 flex flex-row overflow-x-scroll p-1">
-      {columns.map(({ id, name }) => (
-        <div key={id} className="flex-shrink-0 w-full max-w-xs p-2 mr-1">
-          <h2 className="text-lg font-extrabold mb-2 text-gray-700">{name}</h2>
-
-          <Cards columnId={id} />
-        </div>
-      ))}
-    </div>
-  );
-};
+export const Columns: React.FC<Props> = ({ columns }) => (
+  <div className="flex-1 flex flex-row overflow-x-scroll p-1">
+    {columns.map(column => (
+      <Column key={column.id} column={column} />
+    ))}
+  </div>
+);
