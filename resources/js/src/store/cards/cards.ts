@@ -183,3 +183,34 @@ export const moveCard = (
     throw new Error('Failed to move card.');
   }
 };
+
+export const editCard = (
+  card: StoreCard,
+  title: string,
+  body: string,
+): AppThunk => async dispatch => {
+  dispatch(
+    updateCard({
+      cardId: card.id,
+      updates: { title, body, persisted: false },
+    }),
+  );
+
+  try {
+    const res = await patch<Card>(`/api/cards/${card.id}`, {
+      title,
+      body,
+    });
+
+    dispatch(
+      updateCard({ cardId: card.id, updates: { ...res, persisted: true } }),
+    );
+  } catch (e) {
+    dispatch(
+      updateCard({
+        cardId: card.id,
+        updates: { title: card.title, body: card.body, persisted: true },
+      }),
+    );
+  }
+};

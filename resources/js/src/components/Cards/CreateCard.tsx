@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { makeCard } from '../../store/cards/cards';
 import { useDispatch } from '../../store/store';
+import { Button } from '../Button/Button';
+import { CardLayout } from './CardLayout';
 
 type Props = {
   columnId: number;
@@ -40,11 +42,7 @@ export const CreateCard: React.FC<Props> = ({ columnId }) => {
   };
 
   return opened ? (
-    <div
-      className={`p-2 bg-white shadow rounded ${
-        loading ? 'opacity-75 cursor-wait' : ''
-      }`}
-    >
+    <CardLayout loading={loading}>
       <form onSubmit={handleCreate}>
         <input
           placeholder="Title"
@@ -64,27 +62,15 @@ export const CreateCard: React.FC<Props> = ({ columnId }) => {
         />
 
         <div className="flex flex-row justify-end mt-2">
-          <button
-            className={`${
-              loading ? 'cursor-auto' : 'hover:bg-gray-100'
-            } leading-none p-2 px-3 rounded`}
-            onClick={handleCancel}
-            disabled={loading}
-          >
+          <Button onClick={handleCancel} disabled={loading} variant="text">
             Cancel
-          </button>
-          <button
-            className={`bg-indigo-600 ${
-              loading ? 'cursor-auto' : 'hover:bg-indigo-700'
-            } leading-none p-2 px-3 rounded text-indigo-100 font-semibold ml-2`}
-            type="submit"
-            disabled={loading}
-          >
+          </Button>
+          <Button type="submit" disabled={loading}>
             Save
-          </button>
+          </Button>
         </div>
       </form>
-    </div>
+    </CardLayout>
   ) : (
     <button
       className="p-2 bg-gray-300 hover:bg-gray-400 opacity-50 rounded focus:outline-none cursor-auto"

@@ -7,7 +7,7 @@ type Props = {
 };
 
 export const Columns: React.FC<Props> = ({ columns }) => (
-  <div className="flex-1 flex flex-row overflow-x-scroll p-1">
+  <div className="flex-1 flex flex-row overflow-x-scroll p-1 shadow-2xl">
     {columns.map(column => (
       <Column key={column.id} column={column} />
     ))}

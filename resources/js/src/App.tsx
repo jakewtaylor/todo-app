@@ -15,7 +15,7 @@ export const App: React.FC<Props> = ({ store }) => {
   return (
     <Provider store={store}>
       <DndProvider backend={HTML5Backend}>
-        <div className="h-full flex flex-row">
+        <div className="h-full flex flex-col md:flex-row">
           <Boards />
 
           <Board />
