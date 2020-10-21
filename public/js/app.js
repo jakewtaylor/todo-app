@@ -24759,6 +24759,365 @@ function matchesType(targetType, draggedItemType) {
 
 /***/ }),
 
+/***/ "./node_modules/dnd-multi-backend/dist/esm/MultiBackend.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/dnd-multi-backend/dist/esm/MultiBackend.js ***!
+  \*****************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return _default; });
+/* harmony import */ var _PreviewList__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./PreviewList */ "./node_modules/dnd-multi-backend/dist/esm/PreviewList.js");
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+
+
+var _default = function _default(manager, context, sourceOptions) {
+  var _this = this;
+
+  _classCallCheck(this, _default);
+
+  this.setup = function () {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (_this.constructor.isSetUp) {
+      throw new Error('Cannot have two MultiBackends at the same time.');
+    }
+
+    _this.constructor.isSetUp = true;
+
+    _this.addEventListeners(window);
+
+    _this.backends[_this.current].instance.setup();
+  };
+
+  this.teardown = function () {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    _this.constructor.isSetUp = false;
+
+    _this.removeEventListeners(window);
+
+    _this.backends[_this.current].instance.teardown();
+  };
+
+  this.connectDragSource = function () {
+    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    return _this.connectBackend('connectDragSource', args);
+  };
+
+  this.connectDragPreview = function () {
+    for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+      args[_key2] = arguments[_key2];
+    }
+
+    return _this.connectBackend('connectDragPreview', args);
+  };
+
+  this.connectDropTarget = function () {
+    for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+      args[_key3] = arguments[_key3];
+    }
+
+    return _this.connectBackend('connectDropTarget', args);
+  };
+
+  this.previewEnabled = function () {
+    return _this.backends[_this.current].preview;
+  };
+
+  this.addEventListeners = function (target) {
+    _this.backends.forEach(function (backend) {
+      if (backend.transition) {
+        target.addEventListener(backend.transition.event, _this.backendSwitcher, true);
+      }
+    });
+  };
+
+  this.removeEventListeners = function (target) {
+    _this.backends.forEach(function (backend) {
+      if (backend.transition) {
+        target.removeEventListener(backend.transition.event, _this.backendSwitcher, true);
+      }
+    });
+  };
+
+  this.backendSwitcher = function (event) {
+    var oldBackend = _this.current;
+    var i = 0;
+
+    _this.backends.some(function (backend) {
+      if (i !== _this.current && backend.transition && backend.transition.check(event)) {
+        _this.current = i;
+        return true;
+      }
+
+      i += 1;
+      return false;
+    });
+
+    if (_this.current !== oldBackend) {
+      _this.backends[oldBackend].instance.teardown();
+
+      Object.keys(_this.nodes).forEach(function (id) {
+        var node = _this.nodes[id];
+        node.handler();
+        node.handler = _this.callBackend(node.func, node.args);
+      });
+
+      _this.previews.backendChanged(_this);
+
+      var newBackend = _this.backends[_this.current];
+      newBackend.instance.setup();
+
+      if (newBackend.skipDispatchOnTransition) {
+        return;
+      }
+
+      var newEvent = null;
+
+      try {
+        newEvent = new event.constructor(event.type, event);
+      } catch (_e) {
+        newEvent = document.createEvent('Event');
+        newEvent.initEvent(event.type, event.bubbles, event.cancelable);
+      }
+
+      event.target.dispatchEvent(newEvent);
+    }
+  };
+
+  this.callBackend = function (func, args) {
+    var _this$backends$_this$;
+
+    return (_this$backends$_this$ = _this.backends[_this.current].instance)[func].apply(_this$backends$_this$, _toConsumableArray(args));
+  };
+
+  this.connectBackend = function (func, args) {
+    var nodeId = "".concat(func, "_").concat(args[0]);
+
+    var handler = _this.callBackend(func, args);
+
+    _this.nodes[nodeId] = {
+      func: func,
+      args: args,
+      handler: handler
+    };
+    return function () {
+      var _this$nodes$nodeId;
+
+      var r = (_this$nodes$nodeId = _this.nodes[nodeId]).handler.apply(_this$nodes$nodeId, arguments);
+
+      delete _this.nodes[nodeId];
+      return r;
+    };
+  };
+
+  var options = Object.assign({
+    backends: []
+  }, sourceOptions || {});
+
+  if (options.backends.length < 1) {
+    throw new Error("You must specify at least one Backend, if you are coming from 2.x.x (or don't understand this error)\n        see this guide: https://github.com/louisbrunner/dnd-multi-backend/tree/master/packages/react-dnd-multi-backend#migrating-from-2xx");
+  }
+
+  this.current = 0;
+  this.previews = new _PreviewList__WEBPACK_IMPORTED_MODULE_0__["PreviewList"]();
+  this.backends = [];
+  options.backends.forEach(function (backend) {
+    if (!backend.backend) {
+      throw new Error("You must specify a 'backend' property in your Backend entry: ".concat(backend));
+    }
+
+    var transition = backend.transition;
+
+    if (transition && !transition._isMBTransition) {
+      throw new Error("You must specify a valid 'transition' property (either undefined or the return of 'createTransition') in your Backend entry: ".concat(backend));
+    }
+
+    _this.backends.push({
+      instance: backend.backend(manager, context, backend.options),
+      preview: backend.preview || false,
+      transition: transition,
+      skipDispatchOnTransition: Boolean(backend.skipDispatchOnTransition)
+    });
+  });
+  this.nodes = {};
+} // DnD Backend API
+;
+
+
+
+/***/ }),
+
+/***/ "./node_modules/dnd-multi-backend/dist/esm/PreviewList.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/dnd-multi-backend/dist/esm/PreviewList.js ***!
+  \****************************************************************/
+/*! exports provided: PreviewList */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "PreviewList", function() { return PreviewList; });
+function _createForOfIteratorHelper(o) { if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (o = _unsupportedIterableToArray(o))) { var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var it, normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var PreviewList = function PreviewList() {
+  var _this = this;
+
+  _classCallCheck(this, PreviewList);
+
+  this.register = function (preview) {
+    _this.previews.push(preview);
+  };
+
+  this.unregister = function (preview) {
+    var index;
+
+    while ((index = _this.previews.indexOf(preview)) !== -1) {
+      _this.previews.splice(index, 1);
+    }
+  };
+
+  this.backendChanged = function (backend) {
+    var _iterator = _createForOfIteratorHelper(_this.previews),
+        _step;
+
+    try {
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        var preview = _step.value;
+        preview.backendChanged(backend);
+      }
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
+    }
+  };
+
+  this.previews = [];
+};
+
+
+
+/***/ }),
+
+/***/ "./node_modules/dnd-multi-backend/dist/esm/Transitions.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/dnd-multi-backend/dist/esm/Transitions.js ***!
+  \****************************************************************/
+/*! exports provided: TouchTransition, HTML5DragTransition, MouseTransition */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "TouchTransition", function() { return TouchTransition; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "HTML5DragTransition", function() { return HTML5DragTransition; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MouseTransition", function() { return MouseTransition; });
+/* harmony import */ var _createTransition__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./createTransition */ "./node_modules/dnd-multi-backend/dist/esm/createTransition.js");
+
+var TouchTransition = Object(_createTransition__WEBPACK_IMPORTED_MODULE_0__["default"])('touchstart', function (event) {
+  return event.touches != null; // eslint-disable-line no-eq-null, eqeqeq
+});
+var HTML5DragTransition = Object(_createTransition__WEBPACK_IMPORTED_MODULE_0__["default"])('dragstart', function (event) {
+  if (event.type) {
+    return event.type.indexOf('drag') !== -1 || event.type.indexOf('drop') !== -1;
+  }
+
+  return false;
+});
+var MouseTransition = Object(_createTransition__WEBPACK_IMPORTED_MODULE_0__["default"])('mousedown', function (event) {
+  if (event.type) {
+    return event.type.indexOf('touch') === -1 && event.type.indexOf('mouse') !== -1;
+  }
+
+  return false;
+});
+
+/***/ }),
+
+/***/ "./node_modules/dnd-multi-backend/dist/esm/createTransition.js":
+/*!*********************************************************************!*\
+  !*** ./node_modules/dnd-multi-backend/dist/esm/createTransition.js ***!
+  \*********************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony default export */ __webpack_exports__["default"] = (function (event, check) {
+  return {
+    _isMBTransition: true,
+    event: event,
+    check: check
+  };
+});
+
+/***/ }),
+
+/***/ "./node_modules/dnd-multi-backend/dist/esm/index.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/dnd-multi-backend/dist/esm/index.js ***!
+  \**********************************************************/
+/*! exports provided: HTML5DragTransition, TouchTransition, MouseTransition, createTransition, PreviewList, MultiBackend, default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _Transitions__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Transitions */ "./node_modules/dnd-multi-backend/dist/esm/Transitions.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "HTML5DragTransition", function() { return _Transitions__WEBPACK_IMPORTED_MODULE_0__["HTML5DragTransition"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "TouchTransition", function() { return _Transitions__WEBPACK_IMPORTED_MODULE_0__["TouchTransition"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "MouseTransition", function() { return _Transitions__WEBPACK_IMPORTED_MODULE_0__["MouseTransition"]; });
+
+/* harmony import */ var _createTransition__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./createTransition */ "./node_modules/dnd-multi-backend/dist/esm/createTransition.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "createTransition", function() { return _createTransition__WEBPACK_IMPORTED_MODULE_1__["default"]; });
+
+/* harmony import */ var _PreviewList__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./PreviewList */ "./node_modules/dnd-multi-backend/dist/esm/PreviewList.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "PreviewList", function() { return _PreviewList__WEBPACK_IMPORTED_MODULE_2__["PreviewList"]; });
+
+/* harmony import */ var _MultiBackend__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./MultiBackend */ "./node_modules/dnd-multi-backend/dist/esm/MultiBackend.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "MultiBackend", function() { return _MultiBackend__WEBPACK_IMPORTED_MODULE_3__["default"]; });
+
+
+
+
+
+
+/* harmony default export */ __webpack_exports__["default"] = (function (manager, context, options) {
+  return new _MultiBackend__WEBPACK_IMPORTED_MODULE_3__["default"](manager, context, options);
+});
+
+/***/ }),
+
 /***/ "./node_modules/engine.io-client/lib/globalThis.browser.js":
 /*!*****************************************************************!*\
   !*** ./node_modules/engine.io-client/lib/globalThis.browser.js ***!
@@ -33046,6 +33405,1263 @@ function union(itemsA, itemsB) {
   });
   return result;
 }
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-multi-backend/dist/esm/HTML5toTouch.js":
+/*!***********************************************************************!*\
+  !*** ./node_modules/react-dnd-multi-backend/dist/esm/HTML5toTouch.js ***!
+  \***********************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var react_dnd_html5_backend__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react-dnd-html5-backend */ "./node_modules/react-dnd-html5-backend/dist/esm/index.js");
+/* harmony import */ var react_dnd_touch_backend__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-dnd-touch-backend */ "./node_modules/react-dnd-touch-backend/dist/esm/index.js");
+/* harmony import */ var dnd_multi_backend__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! dnd-multi-backend */ "./node_modules/dnd-multi-backend/dist/esm/index.js");
+
+
+
+/* harmony default export */ __webpack_exports__["default"] = ({
+  backends: [{
+    backend: react_dnd_html5_backend__WEBPACK_IMPORTED_MODULE_0__["HTML5Backend"],
+    transition: dnd_multi_backend__WEBPACK_IMPORTED_MODULE_2__["MouseTransition"]
+  }, {
+    backend: react_dnd_touch_backend__WEBPACK_IMPORTED_MODULE_1__["TouchBackend"],
+    options: {
+      enableMouseEvents: true
+    },
+    preview: true,
+    transition: dnd_multi_backend__WEBPACK_IMPORTED_MODULE_2__["TouchTransition"]
+  }]
+});
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-multi-backend/dist/esm/common.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/react-dnd-multi-backend/dist/esm/common.js ***!
+  \*****************************************************************/
+/*! exports provided: useObservePreviews */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "useObservePreviews", function() { return useObservePreviews; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var react_dnd__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-dnd */ "./node_modules/react-dnd/dist/esm/index.js");
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return; var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+
+
+
+var useObservePreviews = function useObservePreviews() {
+  var _useState = Object(react__WEBPACK_IMPORTED_MODULE_0__["useState"])(false),
+      _useState2 = _slicedToArray(_useState, 2),
+      enabled = _useState2[0],
+      setEnabled = _useState2[1];
+
+  var dndContext = Object(react__WEBPACK_IMPORTED_MODULE_0__["useContext"])(react_dnd__WEBPACK_IMPORTED_MODULE_1__["DndContext"]);
+  Object(react__WEBPACK_IMPORTED_MODULE_0__["useEffect"])(function () {
+    var backend = dndContext.dragDropManager.getBackend();
+    var observer = {
+      backendChanged: function backendChanged(cbackend) {
+        setEnabled(cbackend.previewEnabled());
+      }
+    };
+    setEnabled(backend.previewEnabled());
+    backend.previews.register(observer);
+    return function () {
+      backend.previews.unregister(observer);
+    };
+  }, [dndContext, setEnabled]);
+  return enabled;
+};
+
+
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-multi-backend/dist/esm/components/DndProvider.js":
+/*!*********************************************************************************!*\
+  !*** ./node_modules/react-dnd-multi-backend/dist/esm/components/DndProvider.js ***!
+  \*********************************************************************************/
+/*! exports provided: PreviewPortalContext, DndProvider */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "PreviewPortalContext", function() { return PreviewPortalContext; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "DndProvider", function() { return DndProvider; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! prop-types */ "./node_modules/prop-types/index.js");
+/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(prop_types__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var react_dnd__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-dnd */ "./node_modules/react-dnd/dist/esm/index.js");
+/* harmony import */ var dnd_multi_backend__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! dnd-multi-backend */ "./node_modules/dnd-multi-backend/dist/esm/index.js");
+function _extends() { _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; }; return _extends.apply(this, arguments); }
+
+
+
+
+
+var PreviewPortalContext = react__WEBPACK_IMPORTED_MODULE_0___default.a.createContext(null);
+var DndProvider = function DndProvider(props) {
+  var previewPortal = Object(react__WEBPACK_IMPORTED_MODULE_0__["useRef"])();
+  return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(PreviewPortalContext.Provider, {
+    value: previewPortal.current
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(react_dnd__WEBPACK_IMPORTED_MODULE_2__["DndProvider"], _extends({
+    backend: dnd_multi_backend__WEBPACK_IMPORTED_MODULE_3__["default"]
+  }, props)), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
+    ref: previewPortal
+  }));
+};
+DndProvider.propTypes = {
+  manager: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.any,
+  context: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.any,
+  options: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.any,
+  debugMode: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.bool
+};
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-multi-backend/dist/esm/components/Preview.js":
+/*!*****************************************************************************!*\
+  !*** ./node_modules/react-dnd-multi-backend/dist/esm/components/Preview.js ***!
+  \*****************************************************************************/
+/*! exports provided: Preview, PreviewContext */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Preview", function() { return Preview; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var react_dom__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-dom */ "./node_modules/react-dom/index.js");
+/* harmony import */ var react_dom__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react_dom__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var react_dnd_preview__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-dnd-preview */ "./node_modules/react-dnd-preview/dist/esm/index.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "PreviewContext", function() { return react_dnd_preview__WEBPACK_IMPORTED_MODULE_2__["Context"]; });
+
+/* harmony import */ var _common__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../common */ "./node_modules/react-dnd-multi-backend/dist/esm/common.js");
+/* harmony import */ var _DndProvider__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./DndProvider */ "./node_modules/react-dnd-multi-backend/dist/esm/components/DndProvider.js");
+
+
+
+
+
+
+var Preview = function Preview(props) {
+  var enabled = Object(_common__WEBPACK_IMPORTED_MODULE_3__["useObservePreviews"])();
+  var portal = Object(react__WEBPACK_IMPORTED_MODULE_0__["useContext"])(_DndProvider__WEBPACK_IMPORTED_MODULE_4__["PreviewPortalContext"]);
+
+  if (!enabled) {
+    return null;
+  }
+
+  var result = /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(react_dnd_preview__WEBPACK_IMPORTED_MODULE_2__["default"], props);
+
+  if (portal) {
+    return /*#__PURE__*/react_dom__WEBPACK_IMPORTED_MODULE_1___default.a.createPortal(result, portal);
+  }
+
+  return result;
+};
+
+Preview.Context = react_dnd_preview__WEBPACK_IMPORTED_MODULE_2__["Context"];
+Preview.propTypes = react_dnd_preview__WEBPACK_IMPORTED_MODULE_2__["default"].propTypes;
+
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-multi-backend/dist/esm/hooks/index.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/react-dnd-multi-backend/dist/esm/hooks/index.js ***!
+  \**********************************************************************/
+/*! exports provided: usePreview */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _usePreview__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./usePreview */ "./node_modules/react-dnd-multi-backend/dist/esm/hooks/usePreview.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "usePreview", function() { return _usePreview__WEBPACK_IMPORTED_MODULE_0__["usePreview"]; });
+
+
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-multi-backend/dist/esm/hooks/usePreview.js":
+/*!***************************************************************************!*\
+  !*** ./node_modules/react-dnd-multi-backend/dist/esm/hooks/usePreview.js ***!
+  \***************************************************************************/
+/*! exports provided: usePreview */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "usePreview", function() { return usePreview; });
+/* harmony import */ var react_dnd_preview__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react-dnd-preview */ "./node_modules/react-dnd-preview/dist/esm/index.js");
+/* harmony import */ var _common__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../common */ "./node_modules/react-dnd-multi-backend/dist/esm/common.js");
+
+
+
+var usePreview = function usePreview() {
+  var enabled = Object(_common__WEBPACK_IMPORTED_MODULE_1__["useObservePreviews"])();
+  var result = Object(react_dnd_preview__WEBPACK_IMPORTED_MODULE_0__["usePreview"])();
+
+  if (!enabled) {
+    return {
+      display: false
+    };
+  }
+
+  return result;
+};
+
+
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-multi-backend/dist/esm/index.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/react-dnd-multi-backend/dist/esm/index.js ***!
+  \****************************************************************/
+/*! exports provided: default, HTML5DragTransition, TouchTransition, MouseTransition, createTransition, DndProvider, Preview, PreviewContext, usePreview */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var dnd_multi_backend__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! dnd-multi-backend */ "./node_modules/dnd-multi-backend/dist/esm/index.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "default", function() { return dnd_multi_backend__WEBPACK_IMPORTED_MODULE_0__["default"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "HTML5DragTransition", function() { return dnd_multi_backend__WEBPACK_IMPORTED_MODULE_0__["HTML5DragTransition"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "TouchTransition", function() { return dnd_multi_backend__WEBPACK_IMPORTED_MODULE_0__["TouchTransition"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "MouseTransition", function() { return dnd_multi_backend__WEBPACK_IMPORTED_MODULE_0__["MouseTransition"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "createTransition", function() { return dnd_multi_backend__WEBPACK_IMPORTED_MODULE_0__["createTransition"]; });
+
+/* harmony import */ var _components_DndProvider__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./components/DndProvider */ "./node_modules/react-dnd-multi-backend/dist/esm/components/DndProvider.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "DndProvider", function() { return _components_DndProvider__WEBPACK_IMPORTED_MODULE_1__["DndProvider"]; });
+
+/* harmony import */ var _components_Preview__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./components/Preview */ "./node_modules/react-dnd-multi-backend/dist/esm/components/Preview.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Preview", function() { return _components_Preview__WEBPACK_IMPORTED_MODULE_2__["Preview"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "PreviewContext", function() { return _components_Preview__WEBPACK_IMPORTED_MODULE_2__["PreviewContext"]; });
+
+/* harmony import */ var _hooks__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./hooks */ "./node_modules/react-dnd-multi-backend/dist/esm/hooks/index.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "usePreview", function() { return _hooks__WEBPACK_IMPORTED_MODULE_3__["usePreview"]; });
+
+
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-preview/dist/esm/Context.js":
+/*!************************************************************!*\
+  !*** ./node_modules/react-dnd-preview/dist/esm/Context.js ***!
+  \************************************************************/
+/*! exports provided: Context */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Context", function() { return Context; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+
+var Context = react__WEBPACK_IMPORTED_MODULE_0___default.a.createContext();
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-preview/dist/esm/Preview.js":
+/*!************************************************************!*\
+  !*** ./node_modules/react-dnd-preview/dist/esm/Preview.js ***!
+  \************************************************************/
+/*! exports provided: Preview */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Preview", function() { return Preview; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! prop-types */ "./node_modules/prop-types/index.js");
+/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(prop_types__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _usePreview__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./usePreview */ "./node_modules/react-dnd-preview/dist/esm/usePreview.js");
+/* harmony import */ var _Context__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./Context */ "./node_modules/react-dnd-preview/dist/esm/Context.js");
+function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
+
+function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
+
+
+
+
+
+
+var Preview = function Preview(props) {
+  var _usePreview = Object(_usePreview__WEBPACK_IMPORTED_MODULE_2__["usePreview"])(),
+      display = _usePreview.display,
+      data = _objectWithoutProperties(_usePreview, ["display"]);
+
+  if (!display) {
+    return null;
+  }
+
+  var child;
+
+  if (props.children && typeof props.children === 'function') {
+    child = props.children(data);
+  } else if (props.children) {
+    child = props.children;
+  } else {
+    child = props.generator(data);
+  }
+
+  return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_Context__WEBPACK_IMPORTED_MODULE_3__["Context"].Provider, {
+    value: data
+  }, child);
+};
+
+Preview.propTypes = {
+  generator: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func,
+  children: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.oneOfType([prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.node, prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func])
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-preview/dist/esm/index.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/react-dnd-preview/dist/esm/index.js ***!
+  \**********************************************************/
+/*! exports provided: usePreview, Context, Preview, default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _Preview__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Preview */ "./node_modules/react-dnd-preview/dist/esm/Preview.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Preview", function() { return _Preview__WEBPACK_IMPORTED_MODULE_0__["Preview"]; });
+
+/* harmony import */ var _usePreview__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./usePreview */ "./node_modules/react-dnd-preview/dist/esm/usePreview.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "usePreview", function() { return _usePreview__WEBPACK_IMPORTED_MODULE_1__["usePreview"]; });
+
+/* harmony import */ var _Context__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Context */ "./node_modules/react-dnd-preview/dist/esm/Context.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Context", function() { return _Context__WEBPACK_IMPORTED_MODULE_2__["Context"]; });
+
+
+
+
+
+/* harmony default export */ __webpack_exports__["default"] = (_Preview__WEBPACK_IMPORTED_MODULE_0__["Preview"]);
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-preview/dist/esm/usePreview.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/react-dnd-preview/dist/esm/usePreview.js ***!
+  \***************************************************************/
+/*! exports provided: usePreview */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "usePreview", function() { return usePreview; });
+/* harmony import */ var react_dnd__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react-dnd */ "./node_modules/react-dnd/dist/esm/index.js");
+
+
+var getStyle = function getStyle(currentOffset) {
+  var transform = "translate(".concat(currentOffset.x, "px, ").concat(currentOffset.y, "px)");
+  return {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    transform: transform,
+    WebkitTransform: transform
+  };
+};
+
+var usePreview = function usePreview() {
+  var collectedProps = Object(react_dnd__WEBPACK_IMPORTED_MODULE_0__["useDragLayer"])(function (monitor) {
+    return {
+      currentOffset: monitor.getSourceClientOffset(),
+      isDragging: monitor.isDragging(),
+      itemType: monitor.getItemType(),
+      item: monitor.getItem()
+    };
+  });
+
+  if (!collectedProps.isDragging || collectedProps.currentOffset === null) {
+    return {
+      display: false
+    };
+  }
+
+  return {
+    display: true,
+    itemType: collectedProps.itemType,
+    item: collectedProps.item,
+    style: getStyle(collectedProps.currentOffset)
+  };
+};
+
+
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/OptionsReader.js":
+/*!************************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/OptionsReader.js ***!
+  \************************************************************************/
+/*! exports provided: OptionsReader */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "OptionsReader", function() { return OptionsReader; });
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var OptionsReader = /*#__PURE__*/function () {
+  function OptionsReader(incoming, context) {
+    var _this = this;
+
+    _classCallCheck(this, OptionsReader);
+
+    this.enableTouchEvents = true;
+    this.enableMouseEvents = false;
+    this.enableKeyboardEvents = false;
+    this.ignoreContextMenu = false;
+    this.enableHoverOutsideTarget = false;
+    this.touchSlop = 0;
+    this.scrollAngleRanges = undefined;
+    this.context = context;
+    this.delayTouchStart = incoming.delayTouchStart || incoming.delay || 0;
+    this.delayMouseStart = incoming.delayMouseStart || incoming.delay || 0;
+    Object.keys(incoming).forEach(function (key) {
+      if (incoming[key] != null) {
+        ;
+        _this[key] = incoming[key];
+      }
+    });
+  }
+
+  _createClass(OptionsReader, [{
+    key: "window",
+    get: function get() {
+      if (this.context && this.context.window) {
+        return this.context.window;
+      } else if (typeof window !== 'undefined') {
+        return window;
+      }
+
+      return undefined;
+    }
+  }, {
+    key: "document",
+    get: function get() {
+      if (this.window) {
+        return this.window.document;
+      }
+
+      return undefined;
+    }
+  }]);
+
+  return OptionsReader;
+}();
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/TouchBackendImpl.js":
+/*!***************************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/TouchBackendImpl.js ***!
+  \***************************************************************************/
+/*! exports provided: TouchBackendImpl */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "TouchBackendImpl", function() { return TouchBackendImpl; });
+/* harmony import */ var _react_dnd_invariant__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @react-dnd/invariant */ "./node_modules/@react-dnd/invariant/dist/invariant.esm.js");
+/* harmony import */ var _interfaces__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./interfaces */ "./node_modules/react-dnd-touch-backend/dist/esm/interfaces.js");
+/* harmony import */ var _utils_predicates__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils/predicates */ "./node_modules/react-dnd-touch-backend/dist/esm/utils/predicates.js");
+/* harmony import */ var _utils_offsets__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./utils/offsets */ "./node_modules/react-dnd-touch-backend/dist/esm/utils/offsets.js");
+/* harmony import */ var _utils_math__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./utils/math */ "./node_modules/react-dnd-touch-backend/dist/esm/utils/math.js");
+/* harmony import */ var _utils_supportsPassive__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./utils/supportsPassive */ "./node_modules/react-dnd-touch-backend/dist/esm/utils/supportsPassive.js");
+/* harmony import */ var _OptionsReader__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./OptionsReader */ "./node_modules/react-dnd-touch-backend/dist/esm/OptionsReader.js");
+var _eventNames;
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+
+
+
+
+
+
+
+var eventNames = (_eventNames = {}, _defineProperty(_eventNames, _interfaces__WEBPACK_IMPORTED_MODULE_1__["ListenerType"].mouse, {
+  start: 'mousedown',
+  move: 'mousemove',
+  end: 'mouseup',
+  contextmenu: 'contextmenu'
+}), _defineProperty(_eventNames, _interfaces__WEBPACK_IMPORTED_MODULE_1__["ListenerType"].touch, {
+  start: 'touchstart',
+  move: 'touchmove',
+  end: 'touchend'
+}), _defineProperty(_eventNames, _interfaces__WEBPACK_IMPORTED_MODULE_1__["ListenerType"].keyboard, {
+  keydown: 'keydown'
+}), _eventNames);
+var TouchBackendImpl = /*#__PURE__*/function () {
+  function TouchBackendImpl(manager, context, options) {
+    var _this = this;
+
+    _classCallCheck(this, TouchBackendImpl);
+
+    this.getSourceClientOffset = function (sourceId) {
+      var element = _this.sourceNodes.get(sourceId);
+
+      return element && Object(_utils_offsets__WEBPACK_IMPORTED_MODULE_3__["getNodeClientOffset"])(element);
+    };
+
+    this.handleTopMoveStartCapture = function (e) {
+      if (!Object(_utils_predicates__WEBPACK_IMPORTED_MODULE_2__["eventShouldStartDrag"])(e)) {
+        return;
+      }
+
+      _this.moveStartSourceIds = [];
+    };
+
+    this.handleMoveStart = function (sourceId) {
+      // Just because we received an event doesn't necessarily mean we need to collect drag sources.
+      // We only collect start collecting drag sources on touch and left mouse events.
+      if (Array.isArray(_this.moveStartSourceIds)) {
+        _this.moveStartSourceIds.unshift(sourceId);
+      }
+    };
+
+    this.handleTopMoveStart = function (e) {
+      if (!Object(_utils_predicates__WEBPACK_IMPORTED_MODULE_2__["eventShouldStartDrag"])(e)) {
+        return;
+      } // Don't prematurely preventDefault() here since it might:
+      // 1. Mess up scrolling
+      // 2. Mess up long tap (which brings up context menu)
+      // 3. If there's an anchor link as a child, tap won't be triggered on link
+
+
+      var clientOffset = Object(_utils_offsets__WEBPACK_IMPORTED_MODULE_3__["getEventClientOffset"])(e);
+
+      if (clientOffset) {
+        if (Object(_utils_predicates__WEBPACK_IMPORTED_MODULE_2__["isTouchEvent"])(e)) {
+          _this.lastTargetTouchFallback = e.targetTouches[0];
+        }
+
+        _this._mouseClientOffset = clientOffset;
+      }
+
+      _this.waitingForDelay = false;
+    };
+
+    this.handleTopMoveStartDelay = function (e) {
+      if (!Object(_utils_predicates__WEBPACK_IMPORTED_MODULE_2__["eventShouldStartDrag"])(e)) {
+        return;
+      }
+
+      var delay = e.type === eventNames.touch.start ? _this.options.delayTouchStart : _this.options.delayMouseStart;
+      _this.timeout = setTimeout(_this.handleTopMoveStart.bind(_this, e), delay);
+      _this.waitingForDelay = true;
+    };
+
+    this.handleTopMoveCapture = function () {
+      _this.dragOverTargetIds = [];
+    };
+
+    this.handleMove = function (_evt, targetId) {
+      if (_this.dragOverTargetIds) {
+        _this.dragOverTargetIds.unshift(targetId);
+      }
+    };
+
+    this.handleTopMove = function (e) {
+      if (_this.timeout) {
+        clearTimeout(_this.timeout);
+      }
+
+      if (!_this.document || _this.waitingForDelay) {
+        return;
+      }
+
+      var moveStartSourceIds = _this.moveStartSourceIds,
+          dragOverTargetIds = _this.dragOverTargetIds;
+      var enableHoverOutsideTarget = _this.options.enableHoverOutsideTarget;
+      var clientOffset = Object(_utils_offsets__WEBPACK_IMPORTED_MODULE_3__["getEventClientOffset"])(e, _this.lastTargetTouchFallback);
+
+      if (!clientOffset) {
+        return;
+      } // If the touch move started as a scroll, or is is between the scroll angles
+
+
+      if (_this._isScrolling || !_this.monitor.isDragging() && Object(_utils_math__WEBPACK_IMPORTED_MODULE_4__["inAngleRanges"])(_this._mouseClientOffset.x || 0, _this._mouseClientOffset.y || 0, clientOffset.x, clientOffset.y, _this.options.scrollAngleRanges)) {
+        _this._isScrolling = true;
+        return;
+      } // If we're not dragging and we've moved a little, that counts as a drag start
+
+
+      if (!_this.monitor.isDragging() && // eslint-disable-next-line no-prototype-builtins
+      _this._mouseClientOffset.hasOwnProperty('x') && moveStartSourceIds && Object(_utils_math__WEBPACK_IMPORTED_MODULE_4__["distance"])(_this._mouseClientOffset.x || 0, _this._mouseClientOffset.y || 0, clientOffset.x, clientOffset.y) > (_this.options.touchSlop ? _this.options.touchSlop : 0)) {
+        _this.moveStartSourceIds = undefined;
+
+        _this.actions.beginDrag(moveStartSourceIds, {
+          clientOffset: _this._mouseClientOffset,
+          getSourceClientOffset: _this.getSourceClientOffset,
+          publishSource: false
+        });
+      }
+
+      if (!_this.monitor.isDragging()) {
+        return;
+      }
+
+      var sourceNode = _this.sourceNodes.get(_this.monitor.getSourceId());
+
+      _this.installSourceNodeRemovalObserver(sourceNode);
+
+      _this.actions.publishDragSource();
+
+      if (e.cancelable) e.preventDefault(); // Get the node elements of the hovered DropTargets
+
+      var dragOverTargetNodes = (dragOverTargetIds || []).map(function (key) {
+        return _this.targetNodes.get(key);
+      }).filter(function (e) {
+        return !!e;
+      }); // Get the a ordered list of nodes that are touched by
+
+      var elementsAtPoint = _this.options.getDropTargetElementsAtPoint ? _this.options.getDropTargetElementsAtPoint(clientOffset.x, clientOffset.y, dragOverTargetNodes) : _this.document.elementsFromPoint(clientOffset.x, clientOffset.y); // Extend list with parents that are not receiving elementsFromPoint events (size 0 elements and svg groups)
+
+      var elementsAtPointExtended = [];
+
+      for (var nodeId in elementsAtPoint) {
+        // eslint-disable-next-line no-prototype-builtins
+        if (!elementsAtPoint.hasOwnProperty(nodeId)) {
+          continue;
+        }
+
+        var currentNode = elementsAtPoint[nodeId];
+        elementsAtPointExtended.push(currentNode);
+
+        while (currentNode) {
+          currentNode = currentNode.parentElement;
+
+          if (currentNode && elementsAtPointExtended.indexOf(currentNode) === -1) {
+            elementsAtPointExtended.push(currentNode);
+          }
+        }
+      }
+
+      var orderedDragOverTargetIds = elementsAtPointExtended // Filter off nodes that arent a hovered DropTargets nodes
+      .filter(function (node) {
+        return dragOverTargetNodes.indexOf(node) > -1;
+      }) // Map back the nodes elements to targetIds
+      .map(function (node) {
+        return _this._getDropTargetId(node);
+      }) // Filter off possible null rows
+      .filter(function (node) {
+        return !!node;
+      }).filter(function (id, index, ids) {
+        return ids.indexOf(id) === index;
+      }); // Invoke hover for drop targets when source node is still over and pointer is outside
+
+      if (enableHoverOutsideTarget) {
+        for (var targetId in _this.targetNodes) {
+          var targetNode = _this.targetNodes.get(targetId);
+
+          if (sourceNode && targetNode && targetNode.contains(sourceNode) && orderedDragOverTargetIds.indexOf(targetId) === -1) {
+            orderedDragOverTargetIds.unshift(targetId);
+            break;
+          }
+        }
+      } // Reverse order because dnd-core reverse it before calling the DropTarget drop methods
+
+
+      orderedDragOverTargetIds.reverse();
+
+      _this.actions.hover(orderedDragOverTargetIds, {
+        clientOffset: clientOffset
+      });
+    };
+    /**
+     *
+     * visible for testing
+     */
+
+
+    this._getDropTargetId = function (node) {
+      var keys = _this.targetNodes.keys();
+
+      var next = keys.next();
+
+      while (next.done === false) {
+        var targetId = next.value;
+
+        if (node === _this.targetNodes.get(targetId)) {
+          return targetId;
+        } else {
+          next = keys.next();
+        }
+      }
+
+      return undefined;
+    };
+
+    this.handleTopMoveEndCapture = function (e) {
+      _this._isScrolling = false;
+      _this.lastTargetTouchFallback = undefined;
+
+      if (!Object(_utils_predicates__WEBPACK_IMPORTED_MODULE_2__["eventShouldEndDrag"])(e)) {
+        return;
+      }
+
+      if (!_this.monitor.isDragging() || _this.monitor.didDrop()) {
+        _this.moveStartSourceIds = undefined;
+        return;
+      }
+
+      if (e.cancelable) e.preventDefault();
+      _this._mouseClientOffset = {};
+
+      _this.uninstallSourceNodeRemovalObserver();
+
+      _this.actions.drop();
+
+      _this.actions.endDrag();
+    };
+
+    this.handleCancelOnEscape = function (e) {
+      if (e.key === 'Escape' && _this.monitor.isDragging()) {
+        _this._mouseClientOffset = {};
+
+        _this.uninstallSourceNodeRemovalObserver();
+
+        _this.actions.endDrag();
+      }
+    };
+
+    this.options = new _OptionsReader__WEBPACK_IMPORTED_MODULE_6__["OptionsReader"](options, context);
+    this.actions = manager.getActions();
+    this.monitor = manager.getMonitor();
+    this.sourceNodes = new Map();
+    this.sourcePreviewNodes = new Map();
+    this.sourcePreviewNodeOptions = new Map();
+    this.targetNodes = new Map();
+    this.listenerTypes = [];
+    this._mouseClientOffset = {};
+    this._isScrolling = false;
+
+    if (this.options.enableMouseEvents) {
+      this.listenerTypes.push(_interfaces__WEBPACK_IMPORTED_MODULE_1__["ListenerType"].mouse);
+    }
+
+    if (this.options.enableTouchEvents) {
+      this.listenerTypes.push(_interfaces__WEBPACK_IMPORTED_MODULE_1__["ListenerType"].touch);
+    }
+
+    if (this.options.enableKeyboardEvents) {
+      this.listenerTypes.push(_interfaces__WEBPACK_IMPORTED_MODULE_1__["ListenerType"].keyboard);
+    }
+  }
+  /**
+   * Generate profiling statistics for the HTML5Backend.
+   */
+
+
+  _createClass(TouchBackendImpl, [{
+    key: "profile",
+    value: function profile() {
+      var _this$dragOverTargetI;
+
+      return {
+        sourceNodes: this.sourceNodes.size,
+        sourcePreviewNodes: this.sourcePreviewNodes.size,
+        sourcePreviewNodeOptions: this.sourcePreviewNodeOptions.size,
+        targetNodes: this.targetNodes.size,
+        dragOverTargetIds: ((_this$dragOverTargetI = this.dragOverTargetIds) === null || _this$dragOverTargetI === void 0 ? void 0 : _this$dragOverTargetI.length) || 0
+      };
+    } // public for test
+
+  }, {
+    key: "setup",
+    value: function setup() {
+      if (!this.window) {
+        return;
+      }
+
+      Object(_react_dnd_invariant__WEBPACK_IMPORTED_MODULE_0__["invariant"])(!TouchBackendImpl.isSetUp, 'Cannot have two Touch backends at the same time.');
+      TouchBackendImpl.isSetUp = true;
+      this.addEventListener(this.window, 'start', this.getTopMoveStartHandler());
+      this.addEventListener(this.window, 'start', this.handleTopMoveStartCapture, true);
+      this.addEventListener(this.window, 'move', this.handleTopMove);
+      this.addEventListener(this.window, 'move', this.handleTopMoveCapture, true);
+      this.addEventListener(this.window, 'end', this.handleTopMoveEndCapture, true);
+
+      if (this.options.enableMouseEvents && !this.options.ignoreContextMenu) {
+        this.addEventListener(this.window, 'contextmenu', this.handleTopMoveEndCapture);
+      }
+
+      if (this.options.enableKeyboardEvents) {
+        this.addEventListener(this.window, 'keydown', this.handleCancelOnEscape, true);
+      }
+    }
+  }, {
+    key: "teardown",
+    value: function teardown() {
+      if (!this.window) {
+        return;
+      }
+
+      TouchBackendImpl.isSetUp = false;
+      this._mouseClientOffset = {};
+      this.removeEventListener(this.window, 'start', this.handleTopMoveStartCapture, true);
+      this.removeEventListener(this.window, 'start', this.handleTopMoveStart);
+      this.removeEventListener(this.window, 'move', this.handleTopMoveCapture, true);
+      this.removeEventListener(this.window, 'move', this.handleTopMove);
+      this.removeEventListener(this.window, 'end', this.handleTopMoveEndCapture, true);
+
+      if (this.options.enableMouseEvents && !this.options.ignoreContextMenu) {
+        this.removeEventListener(this.window, 'contextmenu', this.handleTopMoveEndCapture);
+      }
+
+      if (this.options.enableKeyboardEvents) {
+        this.removeEventListener(this.window, 'keydown', this.handleCancelOnEscape, true);
+      }
+
+      this.uninstallSourceNodeRemovalObserver();
+    }
+  }, {
+    key: "addEventListener",
+    value: function addEventListener(subject, event, handler, capture) {
+      var options = _utils_supportsPassive__WEBPACK_IMPORTED_MODULE_5__["supportsPassive"] ? {
+        capture: capture,
+        passive: false
+      } : capture;
+      this.listenerTypes.forEach(function (listenerType) {
+        var evt = eventNames[listenerType][event];
+
+        if (evt) {
+          subject.addEventListener(evt, handler, options);
+        }
+      });
+    }
+  }, {
+    key: "removeEventListener",
+    value: function removeEventListener(subject, event, handler, capture) {
+      var options = _utils_supportsPassive__WEBPACK_IMPORTED_MODULE_5__["supportsPassive"] ? {
+        capture: capture,
+        passive: false
+      } : capture;
+      this.listenerTypes.forEach(function (listenerType) {
+        var evt = eventNames[listenerType][event];
+
+        if (evt) {
+          subject.removeEventListener(evt, handler, options);
+        }
+      });
+    }
+  }, {
+    key: "connectDragSource",
+    value: function connectDragSource(sourceId, node) {
+      var _this2 = this;
+
+      var handleMoveStart = this.handleMoveStart.bind(this, sourceId);
+      this.sourceNodes.set(sourceId, node);
+      this.addEventListener(node, 'start', handleMoveStart);
+      return function () {
+        _this2.sourceNodes.delete(sourceId);
+
+        _this2.removeEventListener(node, 'start', handleMoveStart);
+      };
+    }
+  }, {
+    key: "connectDragPreview",
+    value: function connectDragPreview(sourceId, node, options) {
+      var _this3 = this;
+
+      this.sourcePreviewNodeOptions.set(sourceId, options);
+      this.sourcePreviewNodes.set(sourceId, node);
+      return function () {
+        _this3.sourcePreviewNodes.delete(sourceId);
+
+        _this3.sourcePreviewNodeOptions.delete(sourceId);
+      };
+    }
+  }, {
+    key: "connectDropTarget",
+    value: function connectDropTarget(targetId, node) {
+      var _this4 = this;
+
+      if (!this.document) {
+        return function () {
+          /* noop */
+        };
+      }
+
+      var handleMove = function handleMove(e) {
+        if (!_this4.document || !_this4.monitor.isDragging()) {
+          return;
+        }
+
+        var coords;
+        /**
+         * Grab the coordinates for the current mouse/touch position
+         */
+
+        switch (e.type) {
+          case eventNames.mouse.move:
+            coords = {
+              x: e.clientX,
+              y: e.clientY
+            };
+            break;
+
+          case eventNames.touch.move:
+            coords = {
+              x: e.touches[0].clientX,
+              y: e.touches[0].clientY
+            };
+            break;
+        }
+        /**
+         * Use the coordinates to grab the element the drag ended on.
+         * If the element is the same as the target node (or any of it's children) then we have hit a drop target and can handle the move.
+         */
+
+
+        var droppedOn = coords != null ? _this4.document.elementFromPoint(coords.x, coords.y) : undefined;
+        var childMatch = droppedOn && node.contains(droppedOn);
+
+        if (droppedOn === node || childMatch) {
+          return _this4.handleMove(e, targetId);
+        }
+      };
+      /**
+       * Attaching the event listener to the body so that touchmove will work while dragging over multiple target elements.
+       */
+
+
+      this.addEventListener(this.document.body, 'move', handleMove);
+      this.targetNodes.set(targetId, node);
+      return function () {
+        if (_this4.document) {
+          _this4.targetNodes.delete(targetId);
+
+          _this4.removeEventListener(_this4.document.body, 'move', handleMove);
+        }
+      };
+    }
+  }, {
+    key: "getTopMoveStartHandler",
+    value: function getTopMoveStartHandler() {
+      if (!this.options.delayTouchStart && !this.options.delayMouseStart) {
+        return this.handleTopMoveStart;
+      }
+
+      return this.handleTopMoveStartDelay;
+    }
+  }, {
+    key: "installSourceNodeRemovalObserver",
+    value: function installSourceNodeRemovalObserver(node) {
+      var _this5 = this;
+
+      this.uninstallSourceNodeRemovalObserver();
+      this.draggedSourceNode = node;
+      this.draggedSourceNodeRemovalObserver = new MutationObserver(function () {
+        if (node && !node.parentElement) {
+          _this5.resurrectSourceNode();
+
+          _this5.uninstallSourceNodeRemovalObserver();
+        }
+      });
+
+      if (!node || !node.parentElement) {
+        return;
+      }
+
+      this.draggedSourceNodeRemovalObserver.observe(node.parentElement, {
+        childList: true
+      });
+    }
+  }, {
+    key: "resurrectSourceNode",
+    value: function resurrectSourceNode() {
+      if (this.document && this.draggedSourceNode) {
+        this.draggedSourceNode.style.display = 'none';
+        this.draggedSourceNode.removeAttribute('data-reactid');
+        this.document.body.appendChild(this.draggedSourceNode);
+      }
+    }
+  }, {
+    key: "uninstallSourceNodeRemovalObserver",
+    value: function uninstallSourceNodeRemovalObserver() {
+      if (this.draggedSourceNodeRemovalObserver) {
+        this.draggedSourceNodeRemovalObserver.disconnect();
+      }
+
+      this.draggedSourceNodeRemovalObserver = undefined;
+      this.draggedSourceNode = undefined;
+    }
+  }, {
+    key: "window",
+    get: function get() {
+      return this.options.window;
+    } // public for test
+
+  }, {
+    key: "document",
+    get: function get() {
+      if (this.window) {
+        return this.window.document;
+      }
+
+      return undefined;
+    }
+  }]);
+
+  return TouchBackendImpl;
+}();
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/index.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/index.js ***!
+  \****************************************************************/
+/*! exports provided: TouchBackendImpl, TouchBackend */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "TouchBackend", function() { return TouchBackend; });
+/* harmony import */ var _TouchBackendImpl__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./TouchBackendImpl */ "./node_modules/react-dnd-touch-backend/dist/esm/TouchBackendImpl.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "TouchBackendImpl", function() { return _TouchBackendImpl__WEBPACK_IMPORTED_MODULE_0__["TouchBackendImpl"]; });
+
+
+
+var TouchBackend = function createBackend(manager) {
+  var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+  return new _TouchBackendImpl__WEBPACK_IMPORTED_MODULE_0__["TouchBackendImpl"](manager, context, options);
+};
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/interfaces.js":
+/*!*********************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/interfaces.js ***!
+  \*********************************************************************/
+/*! exports provided: ListenerType */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ListenerType", function() { return ListenerType; });
+var ListenerType;
+
+(function (ListenerType) {
+  ListenerType["mouse"] = "mouse";
+  ListenerType["touch"] = "touch";
+  ListenerType["keyboard"] = "keyboard";
+})(ListenerType || (ListenerType = {}));
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/utils/math.js":
+/*!*********************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/utils/math.js ***!
+  \*********************************************************************/
+/*! exports provided: distance, inAngleRanges */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "distance", function() { return distance; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "inAngleRanges", function() { return inAngleRanges; });
+function distance(x1, y1, x2, y2) {
+  return Math.sqrt(Math.pow(Math.abs(x2 - x1), 2) + Math.pow(Math.abs(y2 - y1), 2));
+}
+function inAngleRanges(x1, y1, x2, y2, angleRanges) {
+  if (!angleRanges) {
+    return false;
+  }
+
+  var angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI + 180;
+
+  for (var i = 0; i < angleRanges.length; ++i) {
+    if ((angleRanges[i].start == null || angle >= angleRanges[i].start) && (angleRanges[i].end == null || angle <= angleRanges[i].end)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/utils/offsets.js":
+/*!************************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/utils/offsets.js ***!
+  \************************************************************************/
+/*! exports provided: getNodeClientOffset, getEventClientTouchOffset, getEventClientOffset */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getNodeClientOffset", function() { return getNodeClientOffset; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getEventClientTouchOffset", function() { return getEventClientTouchOffset; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getEventClientOffset", function() { return getEventClientOffset; });
+/* harmony import */ var _predicates__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./predicates */ "./node_modules/react-dnd-touch-backend/dist/esm/utils/predicates.js");
+
+var ELEMENT_NODE = 1;
+function getNodeClientOffset(node) {
+  var el = node.nodeType === ELEMENT_NODE ? node : node.parentElement;
+
+  if (!el) {
+    return undefined;
+  }
+
+  var _el$getBoundingClient = el.getBoundingClientRect(),
+      top = _el$getBoundingClient.top,
+      left = _el$getBoundingClient.left;
+
+  return {
+    x: left,
+    y: top
+  };
+}
+function getEventClientTouchOffset(e, lastTargetTouchFallback) {
+  if (e.targetTouches.length === 1) {
+    return getEventClientOffset(e.targetTouches[0]);
+  } else if (lastTargetTouchFallback && e.touches.length === 1) {
+    if (e.touches[0].target === lastTargetTouchFallback.target) {
+      return getEventClientOffset(e.touches[0]);
+    }
+  }
+}
+function getEventClientOffset(e, lastTargetTouchFallback) {
+  if (Object(_predicates__WEBPACK_IMPORTED_MODULE_0__["isTouchEvent"])(e)) {
+    return getEventClientTouchOffset(e, lastTargetTouchFallback);
+  } else {
+    return {
+      x: e.clientX,
+      y: e.clientY
+    };
+  }
+}
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/utils/predicates.js":
+/*!***************************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/utils/predicates.js ***!
+  \***************************************************************************/
+/*! exports provided: eventShouldStartDrag, eventShouldEndDrag, isTouchEvent */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "eventShouldStartDrag", function() { return eventShouldStartDrag; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "eventShouldEndDrag", function() { return eventShouldEndDrag; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "isTouchEvent", function() { return isTouchEvent; });
+// Used for MouseEvent.buttons (note the s on the end).
+var MouseButtons = {
+  Left: 1,
+  Right: 2,
+  Center: 4
+}; // Used for e.button (note the lack of an s on the end).
+
+var MouseButton = {
+  Left: 0,
+  Center: 1,
+  Right: 2
+};
+/**
+ * Only touch events and mouse events where the left button is pressed should initiate a drag.
+ * @param {MouseEvent | TouchEvent} e The event
+ */
+
+function eventShouldStartDrag(e) {
+  // For touch events, button will be undefined. If e.button is defined,
+  // then it should be MouseButton.Left.
+  return e.button === undefined || e.button === MouseButton.Left;
+}
+/**
+ * Only touch events and mouse events where the left mouse button is no longer held should end a drag.
+ * It's possible the user mouse downs with the left mouse button, then mouse down and ups with the right mouse button.
+ * We don't want releasing the right mouse button to end the drag.
+ * @param {MouseEvent | TouchEvent} e The event
+ */
+
+function eventShouldEndDrag(e) {
+  // Touch events will have buttons be undefined, while mouse events will have e.buttons's left button
+  // bit field unset if the left mouse button has been released
+  return e.buttons === undefined || (e.buttons & MouseButtons.Left) === 0;
+}
+function isTouchEvent(e) {
+  return !!e.targetTouches;
+}
+
+/***/ }),
+
+/***/ "./node_modules/react-dnd-touch-backend/dist/esm/utils/supportsPassive.js":
+/*!********************************************************************************!*\
+  !*** ./node_modules/react-dnd-touch-backend/dist/esm/utils/supportsPassive.js ***!
+  \********************************************************************************/
+/*! exports provided: supportsPassive */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "supportsPassive", function() { return supportsPassive; });
+var supportsPassive = function () {
+  // simular to jQuery's test
+  var supported = false;
+
+  try {
+    addEventListener('test', function () {// do nothing
+    }, Object.defineProperty({}, 'passive', {
+      get: function get() {
+        supported = true;
+        return true;
+      }
+    }));
+  } catch (e) {// do nothing
+  }
+
+  return supported;
+}();
 
 /***/ }),
 
@@ -71629,10 +73245,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var react_redux__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-redux */ "./node_modules/react-redux/es/index.js");
-/* harmony import */ var react_dnd__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-dnd */ "./node_modules/react-dnd/dist/esm/index.js");
-/* harmony import */ var react_dnd_html5_backend__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-dnd-html5-backend */ "./node_modules/react-dnd-html5-backend/dist/esm/index.js");
+/* harmony import */ var react_dnd_multi_backend__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-dnd-multi-backend */ "./node_modules/react-dnd-multi-backend/dist/esm/index.js");
+/* harmony import */ var react_dnd_multi_backend_dist_esm_HTML5toTouch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-dnd-multi-backend/dist/esm/HTML5toTouch */ "./node_modules/react-dnd-multi-backend/dist/esm/HTML5toTouch.js");
 /* harmony import */ var _components_Board_Board__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./components/Board/Board */ "./resources/js/src/components/Board/Board.tsx");
 /* harmony import */ var _components_Boards_Boards__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./components/Boards/Boards */ "./resources/js/src/components/Boards/Boards.tsx");
+/* harmony import */ var _components_Preview_Preview__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./components/Preview/Preview */ "./resources/js/src/components/Preview/Preview.tsx");
+
 
 
 
@@ -71643,11 +73261,11 @@ var App = function App(_ref) {
   var store = _ref.store;
   return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(react_redux__WEBPACK_IMPORTED_MODULE_1__["Provider"], {
     store: store
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(react_dnd__WEBPACK_IMPORTED_MODULE_2__["DndProvider"], {
-    backend: react_dnd_html5_backend__WEBPACK_IMPORTED_MODULE_3__["HTML5Backend"]
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(react_dnd_multi_backend__WEBPACK_IMPORTED_MODULE_2__["DndProvider"], {
+    options: react_dnd_multi_backend_dist_esm_HTML5toTouch__WEBPACK_IMPORTED_MODULE_3__["default"]
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
     className: "h-full flex flex-col md:flex-row"
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_components_Boards_Boards__WEBPACK_IMPORTED_MODULE_5__["Boards"], null), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_components_Board_Board__WEBPACK_IMPORTED_MODULE_4__["Board"], null))));
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_components_Boards_Boards__WEBPACK_IMPORTED_MODULE_5__["Boards"], null), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_components_Board_Board__WEBPACK_IMPORTED_MODULE_4__["Board"], null)), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_components_Preview_Preview__WEBPACK_IMPORTED_MODULE_6__["Preview"], null)));
 };
 
 /***/ }),
@@ -71750,7 +73368,7 @@ var Boards = function Boards() {
     }, board.name, board.id === selectedBoard ? /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
       className: "absolute inset-y-0 right-0 items-center hidden md:flex"
     }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
-      className: "w-4 h-4 rounded-full bg-gray-200 transform translate-x-2"
+      className: "w-4 h-4 rounded-full bg-indigo-600 transform translate-x-1"
     })) : null);
   }));
 };
@@ -71808,9 +73426,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var react_dnd__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-dnd */ "./node_modules/react-dnd/dist/esm/index.js");
-/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../types */ "./resources/js/src/types.ts");
-/* harmony import */ var _EditCard__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./EditCard */ "./resources/js/src/components/Cards/EditCard.tsx");
-/* harmony import */ var _ViewCard__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./ViewCard */ "./resources/js/src/components/Cards/ViewCard.tsx");
+/* harmony import */ var react_dnd_html5_backend__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-dnd-html5-backend */ "./node_modules/react-dnd-html5-backend/dist/esm/index.js");
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../types */ "./resources/js/src/types.ts");
+/* harmony import */ var _EditCard__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./EditCard */ "./resources/js/src/components/Cards/EditCard.tsx");
+/* harmony import */ var _ViewCard__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./ViewCard */ "./resources/js/src/components/Cards/ViewCard.tsx");
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -71828,36 +73447,57 @@ function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
 
 
+
 var Card = function Card(_ref) {
+  var _div$offsetWidth, _div$offsetHeight;
+
   var card = _ref.card;
 
-  var _useState = Object(react__WEBPACK_IMPORTED_MODULE_0__["useState"])(false),
+  var _useState = Object(react__WEBPACK_IMPORTED_MODULE_0__["useState"])(null),
       _useState2 = _slicedToArray(_useState, 2),
-      editing = _useState2[0],
-      setEditing = _useState2[1];
+      div = _useState2[0],
+      setDiv = _useState2[1];
+
+  var _useState3 = Object(react__WEBPACK_IMPORTED_MODULE_0__["useState"])(false),
+      _useState4 = _slicedToArray(_useState3, 2),
+      editing = _useState4[0],
+      setEditing = _useState4[1];
+
+  var width = (_div$offsetWidth = div === null || div === void 0 ? void 0 : div.offsetWidth) !== null && _div$offsetWidth !== void 0 ? _div$offsetWidth : 0;
+  var height = (_div$offsetHeight = div === null || div === void 0 ? void 0 : div.offsetHeight) !== null && _div$offsetHeight !== void 0 ? _div$offsetHeight : 0;
 
   var _useDrag = Object(react_dnd__WEBPACK_IMPORTED_MODULE_1__["useDrag"])({
     item: {
-      type: _types__WEBPACK_IMPORTED_MODULE_2__["DragItem"].Card,
-      card: card
+      type: _types__WEBPACK_IMPORTED_MODULE_3__["DragItem"].Card,
+      card: card,
+      width: width,
+      height: height
     },
     canDrag: card.persisted && !editing
   }),
-      _useDrag2 = _slicedToArray(_useDrag, 2),
-      drag = _useDrag2[1];
+      _useDrag2 = _slicedToArray(_useDrag, 3),
+      drag = _useDrag2[1],
+      preview = _useDrag2[2];
 
-  return editing ? /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_EditCard__WEBPACK_IMPORTED_MODULE_3__["EditCard"], {
+  Object(react__WEBPACK_IMPORTED_MODULE_0__["useEffect"])(function () {
+    preview(Object(react_dnd_html5_backend__WEBPACK_IMPORTED_MODULE_2__["getEmptyImage"])(), {
+      captureDraggingState: true
+    });
+  }, []);
+  return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
+    ref: setDiv
+  }, editing ? /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_EditCard__WEBPACK_IMPORTED_MODULE_4__["EditCard"], {
     card: card,
     onDone: function onDone() {
       return setEditing(false);
     }
-  }) : /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_ViewCard__WEBPACK_IMPORTED_MODULE_4__["ViewCard"], {
+  }) : /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_ViewCard__WEBPACK_IMPORTED_MODULE_5__["ViewCard"], {
     ref: drag,
     card: card,
     onEdit: function onEdit() {
       return setEditing(true);
     }
-  });
+  }));
 };
 
 /***/ }),
@@ -72179,14 +73819,14 @@ var ViewCard = /*#__PURE__*/Object(react__WEBPACK_IMPORTED_MODULE_1__["forwardRe
     className: "font-bold text-base leading-none text-indigo-900"
   }, card.title), card.body ? /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_1___default.a.createElement("p", {
     className: "text-gray-800 text-sm truncate-4-lines leading-tight mt-1"
-  }, card.body) : null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_1___default.a.createElement("div", {
+  }, card.body) : null, onEdit ? /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_1___default.a.createElement("div", {
     className: "flex flex-row justify-end mt-1"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_1___default.a.createElement("button", {
     className: "text-sm font-semibold text-indigo-500 leading-none hover:bg-indigo-100 py-2 px-3 rounded-sm",
     onClick: function onClick() {
       return onEdit(card);
     }
-  }, "Edit")));
+  }, "Edit")) : null);
 });
 
 /***/ }),
@@ -72278,6 +73918,65 @@ var Columns = function Columns(_ref) {
       column: column
     });
   }));
+};
+
+/***/ }),
+
+/***/ "./resources/js/src/components/Preview/Preview.tsx":
+/*!*********************************************************!*\
+  !*** ./resources/js/src/components/Preview/Preview.tsx ***!
+  \*********************************************************/
+/*! exports provided: Preview */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Preview", function() { return Preview; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var react_dnd__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-dnd */ "./node_modules/react-dnd/dist/esm/index.js");
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../types */ "./resources/js/src/types.ts");
+/* harmony import */ var _Cards_ViewCard__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../Cards/ViewCard */ "./resources/js/src/components/Cards/ViewCard.tsx");
+
+
+
+
+var Preview = function Preview() {
+  var _useDragLayer = Object(react_dnd__WEBPACK_IMPORTED_MODULE_1__["useDragLayer"])(function (monitor) {
+    return {
+      item: monitor.getItem(),
+      itemType: monitor.getItemType(),
+      isDragging: monitor.isDragging()
+    };
+  }),
+      itemType = _useDragLayer.itemType,
+      isDragging = _useDragLayer.isDragging,
+      item = _useDragLayer.item;
+
+  console.log({
+    isDragging: isDragging,
+    item: item,
+    itemType: itemType
+  });
+  if (!isDragging) return null;
+
+  switch (itemType) {
+    case _types__WEBPACK_IMPORTED_MODULE_2__["DragItem"].Card:
+      return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
+        className: "absolute",
+        style: {
+          top: '50%',
+          left: '50%',
+          width: item.width + 'px',
+          height: item.height + 'px'
+        }
+      }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_Cards_ViewCard__WEBPACK_IMPORTED_MODULE_3__["ViewCard"], {
+        card: item.card
+      }));
+
+    default:
+      return null;
+  }
 };
 
 /***/ }),

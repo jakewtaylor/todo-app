@@ -46,7 +46,7 @@ export const Boards: React.FC = () => {
 
           {board.id === selectedBoard ? (
             <div className="absolute inset-y-0 right-0 items-center hidden md:flex">
-              <div className="w-4 h-4 rounded-full bg-gray-200 transform translate-x-2" />
+              <div className="w-4 h-4 rounded-full bg-indigo-600 transform translate-x-1" />
             </div>
           ) : null}
         </button>
