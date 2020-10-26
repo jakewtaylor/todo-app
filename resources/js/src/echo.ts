@@ -15,7 +15,7 @@ type CardEvent = {
 export const startListening = (store: Store<StoreState>) => {
   const echo = new Echo({
     broadcaster: 'socket.io',
-    host: 'http://localhost:6001',
+    host: `${process.env.MIX_ECHO_HOST}:${process.env.MIX_ECHO_PORT}`,
   });
 
   echo
